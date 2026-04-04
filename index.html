@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sky Ace</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { overflow: hidden; background: #000; }
+      #renderCanvas {
+        width: 100vw;
+        height: 100vh;
+        display: block;
+        touch-action: none;
+      }
+      #hud {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fff;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 22px;
+        font-weight: bold;
+        text-shadow: 0 2px 6px #000a;
+        display: flex;
+        gap: 40px;
+        pointer-events: none;
+        user-select: none;
+      }
+      #overlay {
+        position: fixed;
+        inset: 0;
+        background: #000b;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-family: 'Segoe UI', sans-serif;
+        gap: 18px;
+      }
+      #overlay h1 { font-size: 52px; letter-spacing: 4px; text-shadow: 0 0 30px #4af; }
+      #overlay p  { font-size: 18px; opacity: 0.85; max-width: 420px; text-align: center; line-height: 1.6; }
+      #overlay button {
+        margin-top: 10px;
+        padding: 14px 44px;
+        font-size: 20px;
+        border: none;
+        border-radius: 8px;
+        background: #4af;
+        color: #000;
+        font-weight: bold;
+        cursor: pointer;
+        letter-spacing: 1px;
+      }
+      #overlay button:hover { background: #7cf; }
+      #overlay.hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="hud">
+      <span id="scoreHud">Pássaros: 0</span>
+      <span id="timerHud">Tempo: 60s</span>
+      <span id="penaltyHud">Colisões: 0</span>
+    </div>
+    <div id="overlay">
+      <h1>✈ SKY ACE</h1>
+      <p>
+        <b>Setas</b> — mover o avião<br>
+        <b>Espaço</b> — atirar nos pássaros<br>
+        Evite colidir com os pássaros!<br>
+        Você tem <b>60 segundos</b>.
+      </p>
+      <button id="startBtn">JOGAR</button>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -56,6 +56,81 @@
       }
       #overlay button:hover { background: #7cf; }
       #overlay.hidden { display: none; }
+
+      /* ── Altitude Bar ── */
+      #altBar {
+        position: fixed;
+        right: 10px;
+        top: 60px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        pointer-events: none;
+        user-select: none;
+      }
+      #altBarLabel {
+        color: #4adeff;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 10px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        text-shadow: 0 1px 4px #000;
+      }
+      #altTrack {
+        position: relative;
+        width: 16px;
+        height: 190px;
+        background: rgba(0,8,20,0.55);
+        border: 1.5px solid rgba(100,200,255,0.28);
+        border-radius: 8px;
+      }
+      #altFill {
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        background: linear-gradient(to top, rgba(40,180,255,0.8), rgba(40,180,255,0.08));
+        border-radius: 0 0 7px 7px;
+      }
+      #altMarker {
+        position: absolute;
+        left: 0; right: 0;
+        height: 2px;
+        background: #fff;
+        box-shadow: 0 0 5px #4adeff;
+      }
+      #altValue {
+        color: #fff;
+        font-family: monospace;
+        font-size: 11px;
+        text-shadow: 0 1px 4px #000;
+      }
+
+      /* ── Radar 2D ── */
+      #radar {
+        position: fixed;
+        right: 10px;
+        bottom: 14px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        pointer-events: none;
+        user-select: none;
+      }
+      #radarLabel {
+        color: #4adeff;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 10px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        text-shadow: 0 1px 4px #000;
+      }
+      #radarCanvas {
+        background: rgba(0,8,20,0.65);
+        border: 1.5px solid rgba(100,200,255,0.28);
+        border-radius: 6px;
+        display: block;
+      }
     </style>
   </head>
   <body>
@@ -75,6 +150,22 @@
       </p>
       <button id="startBtn">JOGAR</button>
     </div>
+    <!-- Altitude Bar -->
+    <div id="altBar">
+      <div id="altBarLabel">ALT</div>
+      <div id="altTrack">
+        <div id="altFill"></div>
+        <div id="altMarker"></div>
+      </div>
+      <div id="altValue">0m</div>
+    </div>
+
+    <!-- Radar lateral 2D -->
+    <div id="radar">
+      <div id="radarLabel">RADAR</div>
+      <canvas id="radarCanvas" width="120" height="130"></canvas>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

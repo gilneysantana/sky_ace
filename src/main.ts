@@ -1,7 +1,7 @@
 import {
   Engine,
   Scene,
-  ArcRotateCamera,
+  UniversalCamera,
   HemisphericLight,
   DirectionalLight,
   Vector3,
@@ -19,9 +19,18 @@ import {
 const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
 const overlay = document.getElementById("overlay") as HTMLDivElement;
 const startBtn = document.getElementById("startBtn") as HTMLButtonElement;
-const scoreHud = document.getElementById("scoreHud") as HTMLSpanElement;
-const timerHud = document.getElementById("timerHud") as HTMLSpanElement;
+const scoreHud   = document.getElementById("scoreHud")   as HTMLSpanElement;
+const timerHud   = document.getElementById("timerHud")   as HTMLSpanElement;
 const penaltyHud = document.getElementById("penaltyHud") as HTMLSpanElement;
+
+// Altitude bar
+const altFill   = document.getElementById("altFill")   as HTMLDivElement;
+const altMarker = document.getElementById("altMarker") as HTMLDivElement;
+const altValue  = document.getElementById("altValue")  as HTMLDivElement;
+
+// Radar
+const radarCanvas = document.getElementById("radarCanvas") as HTMLCanvasElement;
+const radarCtx    = radarCanvas.getContext("2d")!;
 
 // ─── Engine / Scene ───────────────────────────────────────────────────────────
 const engine = new Engine(canvas, true, { preserveDrawingBuffer: true });
@@ -43,11 +52,10 @@ const sun = new DirectionalLight("sun", new Vector3(-1, -2, -1), scene);
 sun.intensity = 0.9;
 sun.diffuse = new Color3(1, 0.97, 0.85);
 
-// ─── Camera (follows plane) ───────────────────────────────────────────────────
-const camera = new ArcRotateCamera("cam", -Math.PI / 2, Math.PI / 3.5, 22, Vector3.Zero(), scene);
-camera.lowerRadiusLimit = camera.upperRadiusLimit = 22;
-camera.lowerBetaLimit = 0.3;
-camera.upperBetaLimit = Math.PI / 2.2;
+// ─── Camera (chase, positioned behind/above the plane each frame) ────────────
+const camera = new UniversalCamera("cam", new Vector3(0, 3.5, -12), scene);
+camera.fov = 1.1;
+camera.minZ = 0.1;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function mat(name: string, hex: string, alpha = 1): StandardMaterial {
@@ -305,13 +313,18 @@ const bullets: Bullet[] = [];
 
 const keys: Record<string, boolean> = {};
 
-const PLANE_SPEED = 8;
-const BULLET_SPEED = 28;
-const BIRD_COUNT = 18;
-const CLOUD_COUNT = 20;
-const BOUNDS = 80;
-const PLANE_Y_MIN = -8;
-const PLANE_Y_MAX = 30;
+const FORWARD_SPEED = 12;   // constant forward flight speed
+const YAW_SPEED    = 1.3;   // turn speed (rad/s)
+const PITCH_SPEED  = 0.9;   // climb/dive speed (rad/s)
+const BULLET_SPEED = 38;
+const BIRD_COUNT   = 18;
+const CLOUD_COUNT  = 20;
+const BOUNDS       = 120;
+const PLANE_Y_MIN  = -8;
+const PLANE_Y_MAX  = 30;
+const RADAR_W      = 120;
+const RADAR_H      = 130;
+const RADAR_RANGE  = 65;  // unidades visíveis para frente/trás
 
 // ─── Spawn clouds ─────────────────────────────────────────────────────────────
 for (let i = 0; i < CLOUD_COUNT; i++) {
@@ -325,11 +338,11 @@ for (let i = 0; i < CLOUD_COUNT; i++) {
 // ─── Spawn birds ──────────────────────────────────────────────────────────────
 function spawnBird(): Bird {
   const angle = Math.random() * Math.PI * 2;
-  const dist2 = 30 + Math.random() * 50;
+  const dist2 = 25 + Math.random() * 45;
   const pos = new Vector3(
-    Math.cos(angle) * dist2,
-    (Math.random() - 0.3) * 20,
-    Math.sin(angle) * dist2
+    airplane.position.x + Math.cos(angle) * dist2,
+    airplane.position.y + (Math.random() - 0.3) * 15,
+    airplane.position.z + Math.sin(angle) * dist2
   );
   return buildBird(pos);
 }
@@ -356,10 +369,12 @@ function fireBullet() {
   b.material = bmat;
   b.position.copyFrom(airplane.position);
 
+  const yaw   = airplane.rotation.y;
+  const pitch = airplane.rotation.x;
   const fwd = new Vector3(
-    Math.sin(airplane.rotation.y),
-    Math.sin(-airplane.rotation.x),
-    Math.cos(airplane.rotation.y)
+    Math.sin(yaw) * Math.cos(pitch),
+    -Math.sin(pitch),
+    Math.cos(yaw) * Math.cos(pitch)
   ).normalize().scale(BULLET_SPEED);
 
   bullets.push({ mesh: b, vel: fwd, life: 2.5 });
@@ -407,6 +422,10 @@ function startGame() {
   bullets.forEach(b => b.mesh.dispose());
   bullets.length = 0;
 
+  trails.forEach(t => t.mesh.dispose());
+  trails.length = 0;
+  trailTimer = 0;
+
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     timeLeft--;
@@ -417,6 +436,23 @@ function startGame() {
 
 startBtn.addEventListener("click", startGame);
 
+// ─── Contrail trails ──────────────────────────────────────────────────────────
+interface Trail { mesh: Mesh; mat: StandardMaterial; life: number; }
+const trails: Trail[] = [];
+let trailTimer = 0;
+
+function spawnTrail(pos: Vector3) {
+  const id = Math.random().toString(36).slice(2);
+  const m = MeshBuilder.CreateSphere("tr_" + id, { diameter: 0.35, segments: 3 }, scene);
+  m.position.copyFrom(pos);
+  const tm = new StandardMaterial("trMat_" + id, scene);
+  tm.diffuseColor = new Color3(1, 1, 1);
+  tm.alpha = 0.55;
+  tm.backFaceCulling = false;
+  m.material = tm;
+  trails.push({ mesh: m, mat: tm, life: 1.2 });
+}
+
 // ─── Game Loop ────────────────────────────────────────────────────────────────
 let elapsed = 0;
 let bankAngle = 0;
@@ -426,28 +462,45 @@ scene.onBeforeRenderObservable.add(() => {
   elapsed += dt;
   if (!gameRunning) return;
 
-  // Plane movement
-  const mx = (keys["ArrowLeft"] ? -1 : 0) + (keys["ArrowRight"] ? 1 : 0);
-  const my = (keys["ArrowUp"] ? 1 : 0) + (keys["ArrowDown"] ? -1 : 0);
+  // ── Plane rotation (yaw + pitch) ──
+  const yawDir   = (keys["ArrowRight"] ? 1 : 0) - (keys["ArrowLeft"]  ? 1 : 0);
+  const pitchDir = (keys["ArrowUp"]    ? 1 : 0) - (keys["ArrowDown"]  ? 1 : 0);
 
-  const targetBank = mx * -0.45;
+  airplane.rotation.y += yawDir   * YAW_SPEED   * dt;
+  airplane.rotation.x  = Math.max(-0.55, Math.min(0.55,
+    airplane.rotation.x + pitchDir * PITCH_SPEED * dt));
+
+  const targetBank = yawDir * -0.55;
   bankAngle += (targetBank - bankAngle) * Math.min(1, dt * 5);
   airplane.rotation.z = bankAngle;
 
-  const targetPitch = my * -0.28;
-  airplane.rotation.x += (targetPitch - airplane.rotation.x) * Math.min(1, dt * 5);
+  // ── Forward flight vector ──
+  const yaw   = airplane.rotation.y;
+  const pitch = airplane.rotation.x;
+  const fwd = new Vector3(
+    Math.sin(yaw) * Math.cos(pitch),
+    -Math.sin(pitch),
+    Math.cos(yaw) * Math.cos(pitch)
+  );
 
-  const moveVec = new Vector3(mx, my, 0).normalize();
-  airplane.position.addInPlace(moveVec.scale(PLANE_SPEED * dt));
-  airplane.position.x = Math.max(-BOUNDS, Math.min(BOUNDS, airplane.position.x));
-  airplane.position.z = Math.max(-BOUNDS, Math.min(BOUNDS, airplane.position.z));
-  airplane.position.y = Math.max(PLANE_Y_MIN, Math.min(PLANE_Y_MAX, airplane.position.y));
-
-  // Gentle bob
+  airplane.position.addInPlace(fwd.scale(FORWARD_SPEED * dt));
+  // Gentle altitude bob
   airplane.position.y += Math.sin(elapsed * 1.3) * 0.003;
 
-  // Camera
-  camera.target.copyFrom(airplane.position);
+  // Wrap-around world bounds (seamless loop)
+  if (airplane.position.x >  BOUNDS) airplane.position.x = -BOUNDS;
+  if (airplane.position.x < -BOUNDS) airplane.position.x =  BOUNDS;
+  if (airplane.position.z >  BOUNDS) airplane.position.z = -BOUNDS;
+  if (airplane.position.z < -BOUNDS) airplane.position.z =  BOUNDS;
+  airplane.position.y = Math.max(PLANE_Y_MIN, Math.min(PLANE_Y_MAX, airplane.position.y));
+
+  // ── Chase camera ──
+  const camRight = new Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+  const camBack  = fwd.scale(-13);
+  const camUp    = new Vector3(0, 3.8, 0).add(camRight.scale(bankAngle * -1.5));
+  const targetCamPos = airplane.position.add(camBack).add(camUp);
+  camera.position = Vector3.Lerp(camera.position, targetCamPos, Math.min(1, dt * 7));
+  camera.setTarget(airplane.position.add(fwd.scale(8)));
 
   // Birds
   for (let i = birds.length - 1; i >= 0; i--) {
@@ -513,12 +566,84 @@ scene.onBeforeRenderObservable.add(() => {
     }
   }
 
+  // ── Contrails from engine pods ──
+  trailTimer += dt;
+  if (trailTimer >= 0.04) {
+    trailTimer = 0;
+    const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
+    const right = new Vector3(cosY, 0, -sinY);
+    const back  = fwd.scale(-0.8);
+    spawnTrail(airplane.position.add(right.scale( 2.2)).add(back).add(new Vector3(0, -0.18, 0)));
+    spawnTrail(airplane.position.add(right.scale(-2.2)).add(back).add(new Vector3(0, -0.18, 0)));
+  }
+
+  // ── Update / cull trails ──
+  for (let i = trails.length - 1; i >= 0; i--) {
+    const tr = trails[i];
+    tr.life -= dt;
+    tr.mat.alpha = Math.max(0, (tr.life / 1.2) * 0.55);
+    tr.mesh.scaling.addInPlace(new Vector3(dt * 0.4, dt * 0.4, dt * 0.4));
+    if (tr.life <= 0) {
+      tr.mesh.dispose();
+      trails.splice(i, 1);
+    }
+  }
+
   // Cloud drift
   clouds.forEach((c, i) => {
     c.position.x += 0.25 * dt * (i % 2 === 0 ? 1 : -1);
     if (c.position.x > 100) c.position.x = -100;
     if (c.position.x < -100) c.position.x = 100;
   });
+
+  // ── Altitude Bar ──
+  const altPct = Math.max(0, Math.min(1, (airplane.position.y - PLANE_Y_MIN) / (PLANE_Y_MAX - PLANE_Y_MIN)));
+  altFill.style.height   = (altPct * 100).toFixed(1) + "%";
+  altMarker.style.bottom = (altPct * 100).toFixed(1) + "%";
+  altValue.textContent   = Math.round(airplane.position.y) + "m";
+
+  // ── Radar lateral 2D ──
+  radarCtx.clearRect(0, 0, RADAR_W, RADAR_H);
+
+  // Grade de altitude
+  radarCtx.strokeStyle = "rgba(100,200,255,0.12)";
+  radarCtx.lineWidth = 0.5;
+  for (let a = PLANE_Y_MIN; a <= PLANE_Y_MAX; a += 10) {
+    const gy = RADAR_H - ((a - PLANE_Y_MIN) / (PLANE_Y_MAX - PLANE_Y_MIN)) * RADAR_H;
+    radarCtx.beginPath(); radarCtx.moveTo(0, gy); radarCtx.lineTo(RADAR_W, gy); radarCtx.stroke();
+  }
+  // Linha vertical central (eixo do avião)
+  radarCtx.strokeStyle = "rgba(100,200,255,0.22)";
+  radarCtx.lineWidth = 1;
+  radarCtx.beginPath(); radarCtx.moveTo(RADAR_W / 2, 0); radarCtx.lineTo(RADAR_W / 2, RADAR_H); radarCtx.stroke();
+
+  // Pássaros: X = distância projetada na frente do avião, Y = altitude
+  const cosYaw = Math.cos(yaw), sinYaw = Math.sin(yaw);
+  for (const bird of birds) {
+    if (bird.hit) continue;
+    const bp = bird.root.getAbsolutePosition();
+    const dx = bp.x - airplane.position.x;
+    const dz = bp.z - airplane.position.z;
+    const fwdDist = dx * sinYaw + dz * cosYaw;
+    const bSX = RADAR_W / 2 + (fwdDist / RADAR_RANGE) * (RADAR_W / 2);
+    const bSY = RADAR_H - Math.max(0, Math.min(1, (bp.y - PLANE_Y_MIN) / (PLANE_Y_MAX - PLANE_Y_MIN))) * RADAR_H;
+    if (bSX < 3 || bSX > RADAR_W - 3) continue;
+    const dist3d = Math.sqrt(dx * dx + (bp.y - airplane.position.y) ** 2 + dz * dz);
+    const alpha = Math.max(0.3, 1 - dist3d / 90);
+    radarCtx.fillStyle = `rgba(255,80,60,${alpha.toFixed(2)})`;
+    radarCtx.beginPath(); radarCtx.arc(bSX, bSY, 3, 0, Math.PI * 2); radarCtx.fill();
+  }
+
+  // Ponto do avião (centro-X, altitude atual)
+  const planeSY = RADAR_H - altPct * RADAR_H;
+  radarCtx.fillStyle = "#4adeff";
+  radarCtx.beginPath(); radarCtx.arc(RADAR_W / 2, planeSY, 4, 0, Math.PI * 2); radarCtx.fill();
+
+  // Rótulos dos eixos
+  radarCtx.fillStyle = "rgba(150,210,255,0.5)";
+  radarCtx.font = "8px monospace";
+  radarCtx.fillText("▲alt", 2, 10);
+  radarCtx.fillText("→fwd", RADAR_W / 2 + 3, RADAR_H - 2);
 });
 
 window.addEventListener("resize", () => engine.resize());

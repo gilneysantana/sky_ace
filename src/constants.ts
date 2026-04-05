@@ -1,0 +1,12 @@
+export const FORWARD_SPEED = 12;
+export const YAW_SPEED     = 1.3;
+export const PITCH_SPEED   = 0.9;
+export const BULLET_SPEED  = 38;
+export const BIRD_COUNT    = 18;
+export const CLOUD_COUNT   = 20;
+export const BOUNDS        = 120;
+export const PLANE_Y_MIN   = -8;
+export const PLANE_Y_MAX   = 30;
+export const RADAR_W       = 120;
+export const RADAR_H       = 130;
+export const RADAR_RANGE   = 65;

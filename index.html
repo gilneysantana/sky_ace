@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sky Ace</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { overflow: hidden; background: #000; }
+      #renderCanvas {
+        width: 100vw;
+        height: 100vh;
+        display: block;
+        touch-action: none;
+      }
+      #hud {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fff;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 22px;
+        font-weight: bold;
+        text-shadow: 0 2px 6px #000a;
+        display: flex;
+        gap: 40px;
+        pointer-events: none;
+        user-select: none;
+      }
+      #overlay {
+        position: fixed;
+        inset: 0;
+        background: #000b;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-family: 'Segoe UI', sans-serif;
+        gap: 18px;
+      }
+      #overlay h1 { font-size: 52px; letter-spacing: 4px; text-shadow: 0 0 30px #4af; }
+      #overlay p  { font-size: 18px; opacity: 0.85; max-width: 420px; text-align: center; line-height: 1.6; }
+      #overlay button {
+        margin-top: 10px;
+        padding: 14px 44px;
+        font-size: 20px;
+        border: none;
+        border-radius: 8px;
+        background: #4af;
+        color: #000;
+        font-weight: bold;
+        cursor: pointer;
+        letter-spacing: 1px;
+      }
+      #overlay button:hover { background: #7cf; }
+      #overlay.hidden { display: none; }
+
+      /* ── Altitude Bar ── */
+      #altBar {
+        position: fixed;
+        right: 10px;
+        top: 60px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        pointer-events: none;
+        user-select: none;
+      }
+      #altBarLabel {
+        color: #4adeff;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 10px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        text-shadow: 0 1px 4px #000;
+      }
+      #altTrack {
+        position: relative;
+        width: 16px;
+        height: 190px;
+        background: rgba(0,8,20,0.55);
+        border: 1.5px solid rgba(100,200,255,0.28);
+        border-radius: 8px;
+      }
+      #altFill {
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        background: linear-gradient(to top, rgba(40,180,255,0.8), rgba(40,180,255,0.08));
+        border-radius: 0 0 7px 7px;
+      }
+      #altMarker {
+        position: absolute;
+        left: 0; right: 0;
+        height: 2px;
+        background: #fff;
+        box-shadow: 0 0 5px #4adeff;
+      }
+      #altValue {
+        color: #fff;
+        font-family: monospace;
+        font-size: 11px;
+        text-shadow: 0 1px 4px #000;
+      }
+
+      /* ── Radar 2D ── */
+      #radar {
+        position: fixed;
+        right: 10px;
+        bottom: 14px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        pointer-events: none;
+        user-select: none;
+      }
+      #radarLabel {
+        color: #4adeff;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 10px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        text-shadow: 0 1px 4px #000;
+      }
+      #radarCanvas {
+        background: rgba(0,8,20,0.65);
+        border: 1.5px solid rgba(100,200,255,0.28);
+        border-radius: 6px;
+        display: block;
+      }
+    </style>
+    <script type="module" crossorigin src="/sky_ace/assets/index-wtbBTKaE.js"></script>
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/math.scalar.functions-Tru935qk.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/engineStore-BLGc67yp.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/shaderStore-Dw977DTa.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/logger-DXZ19q5s.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/tools.functions-CbrWfksd.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/dataBuffer-BmaW7JcX.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/postprocess.vertex-CKREAToG.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/effectRenderer-CV7myQsG.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/typeStore-DUUqxwRN.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/math.vector-CNNxDZEE.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/guid-DafL6nvh.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/texture-CT-JcfjT.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/thinEngine-DesYOTSl.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/cubemapToSphericalPolynomial-CRScZTuW.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/tools-BEiIGajB.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/dumpTools-DCnx-daq.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/envTextureLoader-DA9gpY0I.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/dds-DHzfWUIl.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/iesTextureLoader-Cy993QzJ.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/exrTextureLoader-mXPDRYua.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/basisTextureLoader-DQ2KxW19.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/ddsTextureLoader-D1cfStqW.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/hdrTextureLoader-B7j_5a_s.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/ktxTextureLoader-C9WvMDoQ.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/tgaTextureLoader-DpSVAQAP.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/sceneUboDeclaration-mKDd2yK8.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/backgroundUboDeclaration-BzdxuGS1.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bakedVertexAnimation-CmWAbgZY.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bonesDeclaration-Dz4hg5bm.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bonesVertex-CFgJSxf5.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/boundingBoxRendererUboDeclaration-DeIkKPV6.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bumpFragment-MunW_psD.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bumpFragmentFunctions-BwGhn463.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bumpFragmentMainFunctions-0f0aRQhl.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bumpVertex-CqAyF07W.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/samplerVertexImplementation-B4m0bTXc.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/clipPlaneFragment-pXSF4bb8.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/clipPlaneFragmentDeclaration-mZS9ibV3.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/clipPlaneVertex-2dCmHj3L.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/clipPlaneVertexDeclaration-BmCLTt9H.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/oitFragment-D2-83aHM.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/meshUboDeclaration-Ctle8CeV.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/defaultUboDeclaration-BI-kcgkx.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/fogFragment-tFAW6-0T.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/fogFragmentDeclaration-rhe3qWHe.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/fogVertex-CfCwL2KX.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/fogVertexDeclaration-D0Ea7j0_.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/harmonicsFunctions-BfFOYX6V.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/hdrFilteringFunctions-DX83QkXP.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/helperFunctions-Ct7pf56h.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/imageProcessingDeclaration-DDjzMHdI.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/imageProcessingFunctions-Dy7h_bJn.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/instancesDeclaration-Cx6vgnib.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/instancesVertex-aAHXyQ3V.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/kernelBlurVaryingDeclaration-BCl5ZrDY.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lightFragment-J-_kP20Q.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lightFragmentDeclaration-icL8ji4E.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lightUboDeclaration-K6X1BkQt.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lightVxFragmentDeclaration-BMhjGgNk.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lightVxUboDeclaration-CqEESXh6.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/ltcHelperFunctions-B9nNAPy8.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lightsFragmentFunctions-GuvhlysQ.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/logDepthDeclaration-CpPHTWoo.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/logDepthFragment-ChYotCQn.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/logDepthVertex-CCerApu4.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/mainUVVaryingDeclaration-C8gGOavE.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/morphTargetsVertex-CLsueNfm.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/morphTargetsVertexDeclaration-CPGHgawq.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/morphTargetsVertexGlobal-CaX028_5.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/morphTargetsVertexGlobalDeclaration-CNuper5x.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/packingFunctions-CWxWR1SS.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/pbrBRDFFunctions-CloNvb5R.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/pointCloudVertex-C_sNYRp3.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/reflectionFunction-Dudgmlag.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/screenSpaceRayTrace-D1kbOz2e.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/shadowsFragmentFunctions-BkO1xHIT.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/shadowsVertex-B9wAG4k1.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/vertexColorMixing-BNAGsNxZ.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lod.fragment-B_7xSc-k.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lodCube.fragment-lpUQZSoA.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/pass.fragment-Bgsms9wZ.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/passCube.fragment-triwpdjK.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/rgbdDecode.fragment-B2VmCiSB.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/rgbdEncode.fragment-Cvh7xM5m.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/sceneUboDeclaration-C0KstuK1.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/backgroundUboDeclaration-CwMpKJbD.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bakedVertexAnimation-Br0-Z7EW.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bonesDeclaration-D67HPASy.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bonesVertex-Bv6n4RBM.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bumpFragment-Bkmo4yqj.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bumpFragmentFunctions-JdOkH5V_.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bumpFragmentMainFunctions-p_SpkMgl.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/bumpVertex-ByaFwaPu.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/samplerVertexImplementation-CFX7rFqp.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/clipPlaneFragment-BvU9Usl2.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/clipPlaneFragmentDeclaration-uGPdzxbe.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/clipPlaneVertex-BOg6Mh4e.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/clipPlaneVertexDeclaration-D0_kTlAl.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/oitFragment-Bvz_fR8M.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/meshUboDeclaration-D9ZTBur0.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/defaultUboDeclaration-Cx6VkBzO.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/fogFragment-BUZyJ3sX.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/fogFragmentDeclaration-W0yZm1vr.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/fogVertex-DFLVzLn2.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/fogVertexDeclaration-zRYsaRQB.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/harmonicsFunctions-SWQw6mF4.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/hdrFilteringFunctions-XmtUcIgW.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/helperFunctions-CgVClpTm.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/imageProcessingDeclaration-goKBcEab.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/imageProcessingFunctions-qlOCXB6a.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/instancesDeclaration-BM0iCcK6.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/instancesVertex-Bf5bH9Ft.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/kernelBlurVaryingDeclaration-BeGbpCex.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lightFragment-fyND61YS.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lightUboDeclaration-CpbyQOcm.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lightVxUboDeclaration-CTtJWKx3.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/ltcHelperFunctions-DgxuBHKk.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lightsFragmentFunctions-BDBp9-_C.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/logDepthDeclaration-DRgKErPa.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/logDepthFragment-D7piJOGO.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/logDepthVertex-C5jfuj01.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/mainUVVaryingDeclaration-CSkMx2g6.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/morphTargetsVertex-D_Ry-Z19.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/morphTargetsVertexDeclaration-DnniQ1o0.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/morphTargetsVertexGlobal-CLZKYfra.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/morphTargetsVertexGlobalDeclaration-DSnJw2NV.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/packingFunctions-CUmNcUx-.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/pbrBRDFFunctions-bjfSEDJw.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/reflectionFunction-BJswuQ2S.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/screenSpaceRayTrace-CfGiTixP.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/shadowsFragmentFunctions-Ds8Cs5su.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/shadowsVertex-CH9ikeAH.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/vertexColorMixing-CEhN7raQ.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lod.fragment-CcJGBSuS.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/lodCube.fragment-DTnKaqcp.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/pass.fragment-DqKfhlFR.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/passCube.fragment-BrkmRjx-.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/postprocess.vertex-Cmq1nunZ.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/rgbdDecode.fragment-DtkaaI3F.js">
+    <link rel="modulepreload" crossorigin href="/sky_ace/assets/rgbdEncode.fragment-GHA3f9ky.js">
+  </head>
+  <body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="hud">
+      <span id="scoreHud">Pássaros: 0</span>
+      <span id="timerHud">Tempo: 60s</span>
+      <span id="penaltyHud">Colisões: 0</span>
+    </div>
+    <div id="overlay">
+      <h1>✈ SKY ACE</h1>
+      <p>
+        <b>Setas</b> — mover o avião<br>
+        <b>Espaço</b> — atirar nos pássaros<br>
+        Evite colidir com os pássaros!<br>
+        Você tem <b>60 segundos</b>.
+      </p>
+      <button id="startBtn">JOGAR</button>
+    </div>
+    <!-- Altitude Bar -->
+    <div id="altBar">
+      <div id="altBarLabel">ALT</div>
+      <div id="altTrack">
+        <div id="altFill"></div>
+        <div id="altMarker"></div>
+      </div>
+      <div id="altValue">0m</div>
+    </div>
+
+    <!-- Radar lateral 2D -->
+    <div id="radar">
+      <div id="radarLabel">RADAR</div>
+      <canvas id="radarCanvas" width="120" height="130"></canvas>
+    </div>
+
+  </body>
+</html>

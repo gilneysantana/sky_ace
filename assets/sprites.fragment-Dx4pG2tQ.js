@@ -1,0 +1,1 @@
+import{n as e}from"./index-wtbBTKaE.js";export{e as spritesPixelShaderWGSL};

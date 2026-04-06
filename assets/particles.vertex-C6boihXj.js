@@ -1,0 +1,1 @@
+import{sn as e}from"./index-wtbBTKaE.js";export{e as particlesVertexShader};

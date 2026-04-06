@@ -1,0 +1,1 @@
+import{vt as e}from"./index-wtbBTKaE.js";export{e as blackAndWhitePixelShader};

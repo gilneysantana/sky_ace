@@ -1,0 +1,4 @@
+import{f as e}from"./math.scalar.functions-Tru935qk.js";import{t}from"./shaderStore-Dw977DTa.js";var n=e({lodPixelShader:()=>a}),r=`lodPixelShader`,i=`#extension GL_EXT_shader_texture_lod : enable
+precision highp float;const float GammaEncodePowerApprox=1.0/2.2;varying vec2 vUV;uniform sampler2D textureSampler;uniform float lod;uniform vec2 texSize;uniform int gamma;void main(void)
+{gl_FragColor=texture2DLodEXT(textureSampler,vUV,lod);if (gamma==0) {gl_FragColor.rgb=pow(gl_FragColor.rgb,vec3(GammaEncodePowerApprox));}}
+`;t.ShadersStore[r]||(t.ShadersStore[r]=i);var a={name:r,shader:i};export{n as t};

@@ -1,0 +1,1 @@
+import{r as e}from"./index-wtbBTKaE.js";export{e as spritesVertexShader};

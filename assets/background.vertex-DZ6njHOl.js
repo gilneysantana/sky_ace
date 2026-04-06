@@ -1,0 +1,1 @@
+import{Gn as e}from"./index-wtbBTKaE.js";export{e as backgroundVertexShaderWGSL};
